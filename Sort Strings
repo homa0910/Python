@@ -1,0 +1,45 @@
+from datetime import datetime
+
+start = datetime.now()
+
+# Read data from users source
+print ('Enter your file directory: ')
+fileName = input()
+inFile = open(fileName,'r')
+data = inFile.readlines()
+inFile.close()
+
+
+# Sort lexicographically case insensitive
+# dataStr = ['Table', 'apple', 'Pear', 'okra', 'news', 'juice', 'health']
+lwrCaseStr = []
+for i in dataStr:
+  lwrCaseStr.append (i.lower())
+
+ 
+sortedStr = sorted(lwrCaseStr)
+
+
+# Write output in a text file
+fileName = 'C:\\repo\\sdks\Python34\\Thao Exercises\\Data\\data1.txt'
+temp1 = fileName.split('\\')
+temp2 = temp1[0]
+
+for i in range(1,(len(temp1)-1)):
+  temp2 = temp2 + '\\' + temp1[i]
+
+
+fileName = temp2 + '\\Sorted Data.txt'  
+
+outFile = open(fileName,'w')
+for i in range(0,len(sortedStr)):
+  outFile.write (sortedStr[i])
+  outFile.write ('\n')
+
+
+outFile.close()
+
+
+end = datetime.now()
+
+print (end - start)

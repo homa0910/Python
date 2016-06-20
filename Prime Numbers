@@ -1,0 +1,23 @@
+# Find the list of prime number smaller than or equal to N
+
+N = 13
+primeList = [2]
+
+for i in range(3,N+1):
+  test = []
+  product = 1
+  for j in primeList:
+    test.append(i % j)
+    for k in test:
+      product *= k
+    if(product != 0):
+      primeList.append(i)
+
+print (primeList)
+
+
+
+# Find the largest prime number in the list of prime numbers smaller than or equal to N
+primeList[len(primeList) - 1]
+
+

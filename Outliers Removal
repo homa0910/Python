@@ -1,0 +1,58 @@
+#x = [10,10,10,10,10,10,10,10,10,9]
+
+# Import necessary modules
+from math import sqrt
+from datetime import datetime
+from random import gauss
+
+# Function to find Mean
+def mean(data):
+  n = len(data)
+  total = 0
+  for i in data:
+    total += i
+  average = total / n
+  return (average)
+
+	
+# Function to find standard deviation
+def stdev(data):
+  n = len(data)
+  avg = mean(data)
+  std = 0
+  for i in data:
+    std = std + (i - avg)*(i - avg)	
+  std = sqrt(std/(n-1))
+  return (std)
+
+
+# Function to remove samples larger than K standard deviation away from the mean
+def outlierRM(data,k):
+  avg = mean(data)
+  std = stdev(data)
+  for i in data:
+    if(i > avg + k*std):
+      data.remove(i)	
+    if(i < avg - k*std):
+      data.remove(i)
+  return (data)
+
+
+# Create different types of data
+# Gaussian random numbers
+x = []
+while len(x) < 1000:
+  x.append(gauss(5,2))
+  
+# Array of replicated numbers
+x = [10]*1000
+while len(x) < 1010:
+  x.append(9)
+
+# Run 
+start = datetime.now()
+mean(x)
+stdev(x)
+y = outlierRM(x,1)
+end = datetime.now()
+print(end-start)

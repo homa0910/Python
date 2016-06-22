@@ -6,7 +6,7 @@ start = datetime.now()
 print ('Enter your file directory: ')
 fileName = input()
 inFile = open(fileName,'r')
-data = inFile.readlines()
+dataStr = inFile.readlines()
 inFile.close()
 
 

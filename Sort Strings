@@ -40,6 +40,18 @@ for i in range(0,len(sortedStr)):
 outFile.close()
 
 
+# Get string of data user wants to find
+findData = input()
+findData = findData.lower()
+
+# Check if that data is available in the data file
+for data in findData:
+  if data in sortedData:
+    print ('true')
+    print (data)
+  else:
+    print ('false')
+  
 end = datetime.now()
 
 print (end - start)

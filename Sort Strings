@@ -44,6 +44,12 @@ outFile.close()
 findData = input()
 findData = findData.lower()
 
+
+# Example data to run this
+sortedData = ['apple']*100
+findData = ['apple']*1000000
+
+start = datetime.now()
 # Check if that data is available in the data file
 for data in findData:
   if data in sortedData:

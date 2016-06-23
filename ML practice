@@ -1,0 +1,96 @@
+# Find the current directory
+import os
+os.getcwd()
+
+
+####################################################################################
+#### Lesson 1: Decision Tree  ######################################################
+####################################################################################
+# Decision Tree 
+from sklearn import tree
+
+# Create some data
+features = [[140,1],[130,1],[150,0],[170,0]]
+labels = [0,0,1,1]
+
+# Model
+clf = tree.DecisionTreeClassifier()
+clf = clf.fit(features, labels)
+print (clf.predict([[150,0]]))
+
+####################################################################################
+#### Lesson 2: Iris data ###########################################################
+####################################################################################
+# Import Iris data - readily avaiable within sklearn module
+from sklearn.datasets import load_iris
+import numpy as np
+
+iris = load_iris()
+print (iris.feature_names)    # Print column names
+print (iris.target_names)     # Print types of iris
+print (iris.data[0])          # Print the first row of data
+print (iris.target[0])        # Print the first observation in target
+for i in range(len(iris.target)):    # Print all rows
+  print ('Example %d: label %s, features %s" % (i, iris.target[i], iris.data[i]))
+
+
+# Seperate original data into training and testing sets
+test_idx = [0,50,100]      # Index of the first row of data for each iris type
+
+# training data
+train_target = np.delete(iris.target, test_idx)
+train_data = np.delete(iris.data, test_idx, axis=0)
+
+# testing data
+test_target = iris.target[test_idx]
+test_data = iris.data[test_idx]
+
+# decision tree
+clf = tree.DecisionTreeClassifier()
+clf.fit(train_data, train_target)
+
+
+# Visualization code
+from sklearn.externals.six import StringIO
+import pydot  # Not available 
+
+dot_data = StringIO()
+tree.export_graphviz(clf,
+                     out_file = dot_data,
+					 feature_names = iris.feature_names,
+					 class_names = iris.target_names,
+					 filled = True,
+					 rounded = True,
+					 impurity = False)
+
+
+graph = pydot.graph_from_dot_data(dot_data.getvalue())
+graph.write_pdf('iris.pdf')
+
+
+####################################################################################
+#### Lesson 3: Generate random data and plot histogram #############################
+####################################################################################
+import numpy as np
+import matplotlib.pyplot as plt
+
+greyhounds = 500
+labs = 500
+
+grey_height = 28 + 4*np.random.randn(greyhounds)
+lab_height = 24 + 4*np.random.randn(labs)
+
+plt.hist([grey_height, lab_height], stacked=True, color=['r','b'])
+plt.show()
+
+
+####################################################################################
+#### Lesson 4: back to Iris - this time, write up functions ########################
+####################################################################################
+from sklearn import datasets
+
+iris = datasets.load_iris()
+X = iris.data
+y = iris.target
+
+from sklearn.cross_validation import train_test_split

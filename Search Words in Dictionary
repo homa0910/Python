@@ -1,0 +1,54 @@
+from datetime import datetime
+
+# Load dictionary
+import requests
+word_site = "http://svnweb.freebsd.org/csrg/share/dict/words?view=co&content-type=text/plain"
+response = requests.get(word_site)
+dict = response.content.splitlines()   # This reads as byte instead of string
+
+# Convert byte to string
+for i in range(0,len(dict)):
+  dict[i] = dict[i].decode("utf-8")
+
+ 
+# Convert to lower case and sorted 
+lwrCaseDict = []
+for data in dict:
+  lwrCaseDict.append (data.lower())
+
+
+sortedDict = sorted(lwrCaseDict)
+
+  
+# Split original dictionary into two equal dictionaries
+import math
+dict_1 = random.sample(lwrCaseDict,math.ceil(len(lwrCaseDict)/2))
+#dict_2 = []  # not figured out yet to include only items that were not in dict_1
+
+
+# Sort all Dictionaries lexicographically case insensitive
+sortedDict_1 = sorted(dict_1)
+
+
+
+# Create an array of random words to search for 
+import random
+N = 200
+findWord = []
+for i in range(0,N):
+  findWord.append(random.choice(lwrCaseDict))
+
+  
+# Check if these data exist in dictionary
+start = datetime.now()
+
+for data in findWord:
+  if data in sortedDict_1:
+    print ('true')
+  else:
+    print ('false')
+    
+
+end = datetime.now()
+
+print (end - start)

@@ -8,12 +8,14 @@ CREATE TABLE test (id INTEGER PRIMARY KEY,
 INSERT INTO test (id, city_name, predicted_eta, actual_eta, status, request_at) VALUES 
   (1, 'Qarth', 16, 15, 'completed', '2016-06-11 13:23:44'),
   (2, 'Qarth', 18, 19, 'completed', '2016-07-11 10:13:14'),
-  (3, 'Qarth', 26, 23, 'completed', '2016-06-18 19:21:24'),
-  (4, 'Qarth', 26, 33, 'completed', '2016-06-18 19:21:24'),
+  (3, 'Qarth', 26, 23, 'cancelled_by_rider', '2016-06-18 19:21:24'),
+  (4, 'Qarth', 26, 33, 'cancelled_by_driver', '2016-06-18 19:21:24'),
   (5, 'Meereen', 11, 23, 'completed', '2016-06-28 13:11:14'),
   (6, 'Meereen', 26, 23, 'completed', '2016-06-18 9:24:29'),
-  (7, 'Meereen', 39, 43, 'completed', '2016-06-11 10:01:34'),
+  (7, 'Meereen', 39, 43, 'cancelled_by_rider', '2016-06-11 10:01:34'),
   (8, 'Seattle', 29, 43, 'completed', '2016-07-11 20:26:04');
   
   
-  
+SELECT *, actual_eta - predicted_eta AS difference_eta FROM test 
+WHERE city_name = 'Qarth' AND status = 'completed' 
+ORDER BY difference_eta DESC;

@@ -1,11 +1,11 @@
 require(XLConnect)
 require(MASS)
 
-data = read.csv('C:/Users/tduong/Documents/Exercise/Survey Data.csv',na.strings=c('','NA'))
+data = read.csv('C:/Users/Thao/OneDrive/Job Search 2016/UberInterview/ds_challenge_v2_1_data.csv',na.strings=c('','NA'))
 
 data$signup_date = as.Date(data$signup_date, format='%m/%d/%Y')
 data$first_completed_date = as.Date(data$first_completed_date, format='%m/%d/%Y')
-data$signup_to_completed = data$first_completed_date - data$signup_date 
+data$signup_to_completed = as.numeric(data$first_completed_date - data$signup_date)
 
 
 ### Add binary indicator for whether or not a driver signed up completed first trip
@@ -17,11 +17,16 @@ data$vehicle_model_bin = ifelse(!is.na(data$vehicle_model),1,0)
 data$vehicle_year_bin = ifelse(!is.na(data$vehicle_year),1,0)
 
 ### Some crosstabs
-table(data$first_completed,data$bgc)
-table(data$first_completed,data$vehicle_added)
-table(data$first_completed,data$vehicle_make_bin)
-table(data$first_completed,data$vehicle_model_bin)
-table(data$first_completed,data$vehicle_year_bin)
+crosstab1 = cbind(table(data$first_completed,data$bgc),
+                  table(data$first_completed,data$vehicle_added),
+                  table(data$first_completed,data$vehicle_make_bin),
+                  table(data$first_completed,data$vehicle_model_bin),
+                  table(data$first_completed,data$vehicle_year_bin),
+                  table(data$first_completed,data$city_name),
+                  table(data$first_completed,data$signup_channel),
+                  table(data$first_completed,data$signup_os))
+
+write.csv(crosstab1,'Original Data Crosstabs.csv')
 
 
 ### Rows with bad vehicle_make = bike, bicycle, walker, autobot
@@ -41,18 +46,17 @@ veh.make.table[1,]/table(clean.data$vehicle_make)
 veh.make.table[2,]/table(clean.data$vehicle_make)
 
 city.table = table(clean.data$first_completed,clean.data$city_name)
-city.table[1,]/table(clean.data$city_name)
-city.table[2,]/table(clean.data$city_name)
-
 channel.table = table(clean.data$first_completed,clean.data$signup_channel)
-channel.table[1,]/table(clean.data$signup_channel)
-channel.table[2,]/table(clean.data$signup_channel)
-
 os.table = table(clean.data$first_completed,clean.data$signup_os)
-os.table[1,]/table(clean.data$signup_os)
-os.table[2,]/table(clean.data$signup_os)
 
+crosstab2 = cbind(rbind(city.table[1,]/table(clean.data$city_name),
+                        city.table[2,]/table(clean.data$city_name)),
+                  rbind(channel.table[1,]/table(clean.data$signup_channel),
+                        channel.table[2,]/table(clean.data$signup_channel)),
+                  rbind(os.table[1,]/table(clean.data$signup_os),
+                        os.table[2,]/table(clean.data$signup_os)))
 
+write.csv(crosstab2,'crosstab2.csv')
 
 ### Rows with all NA in (vehicle_added_date, vehicle_make, vehicle_model, vehicle_year, first_completed_date)
 location.na = which(is.na(clean.data$vehicle_added_date) &
@@ -65,7 +69,33 @@ location.na = which(is.na(clean.data$vehicle_added_date) &
 ### Proportion who took first trips
 p.all.first = table(data$first_completed)[2]/nrow(data)
 
+###############################################################################################
+####################      Functions         #################################################
+###############################################################################################
+lrtest = function(fit1, fit2){
+  cat('Assumption: Model 1 nested within Model 2')
+  rslt = anova(fit1, fit2)
+  rslt = cbind(rslt, c('',round(pchisq(rslt[2,4],rslt[2,3],lower.tail=FALSE), 4)))
+  rslt[,2] = round(rslt[,2],3)
+  rslt[,4] = round(rslt[,4],3)
+  rslt[1,3:4] = c('','')
+  names(rslt)[5] = 'pValue'
+  rslt
+}
 
+expfit = function(model){
+  coef = summary(model)$coef
+  ci95.lo = exp(coef[,1] - qnorm(.975)*coef[,2])
+  ci95.hi = exp(coef[,1] + qnorm(.975)*coef[,2])
+  rslt = cbind(exp(coef[,1]), ci95.lo, ci95.hi, coef[,3:4])
+  colnames(rslt)[1] = 'exp(est)'
+  rslt
+}
+
+
+###############################################################################################
+####################      Building model         #################################################
+###############################################################################################
 ### Logistic Regression
 fit1 = glm(first_completed ~ vehicle_added + factor(signup_channel) + factor(signup_os) + factor(city_name),
            data = clean.data, family = binomial(link='logit'))
@@ -76,19 +106,21 @@ fit2 = glm(first_completed ~ vehicle_added + factor(signup_channel) + factor(sig
 fit3 = glm(first_completed ~ vehicle_added + factor(signup_channel),
            data = clean.data, family = binomial(link='logit'))
 
-# fit4 = glm(first_completed ~ vehicle_added,
-#            data = clean.data, family = binomial(link='logit'))
+fit4 = glm(first_completed ~ vehicle_added * factor(signup_channel),
+           data = clean.data, family = binomial(link='logit'))
 
+fit5 = glm(first_completed ~ vehicle_added : factor(signup_channel),
+           data = clean.data, family = binomial(link='logit'))
 
 pred.1 = predict(fit1, type='response')
 pred.2 = predict(fit2, type='response')
 pred.3 = predict(fit3, type='response')
-# pred.4 = predict(fit4, type='response')
+pred.4 = predict(fit4, type='response')
 
 pred.fit1 = ifelse(pred.1 > 0.5, 1, 0)
 pred.fit2 = ifelse(pred.2 > 0.5, 1, 0)
 pred.fit3 = ifelse(pred.3 > 0.5, 1, 0)
-# pred.fit4 = ifelse(pred.4 > 0.5, 1, 0)
+pred.fit4 = ifelse(pred.4 > 0.5, 1, 0)
 
 
 ###############################################################################################
@@ -99,13 +131,22 @@ actual.comp.loc = which(clean.data$first_completed==1)
 pred.comp.loc.1 = which(pred.fit1==1)
 pred.comp.loc.2 = which(pred.fit2==1)
 pred.comp.loc.3 = which(pred.fit3==1)
+pred.comp.loc.4 = which(pred.fit4==1)
 
 ###
 table(pred.3)
-table(clean.data$vehicle_added,clean.data$signup_channel)
+table(clean.data$first_completed,clean.data$vehicle_added,clean.data$signup_channel)
 
 table(pred.2)
 table(clean.data$vehicle_added,clean.data$signup_channel,clean.data$signup_os)
+
+###
+presids = residuals(fit3, type='pearson')
+muhat = fitted(fit3)
+plot(muhat, presids^2, xlim=c(0,0.6), ylim=c(0,5),
+     xlab='Fitted probability', ylab='Person Residual Squared')
+sfit = loess(presids^2 ~ muhat)
+lines(sfit$x[order(sfit$x)], fitted(sfit)[order(sfit$x)],, col='red', lwd=2)
 
 
 ###############################################################################################

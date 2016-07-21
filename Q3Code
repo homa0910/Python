@@ -3,6 +3,10 @@ require(MASS)
 
 data = read.csv('C:/Users/tduong/Documents/Exercise/Survey Data.csv',na.strings=c('','NA'))
 
+data$signup_date = as.Date(data$signup_date, format='%m/%d/%Y')
+data$first_completed_date = as.Date(data$first_completed_date, format='%m/%d/%Y')
+data$signup_to_completed = data$first_completed_date - data$signup_date 
+
 
 ### Add binary indicator for whether or not a driver signed up completed first trip
 data$first_completed = ifelse(!is.na(data$first_completed_date),1,0)
@@ -113,4 +117,5 @@ table(clean.data$vehicle_added,clean.data$signup_channel,clean.data$signup_os)
 ### vehicle_make, vehicle_model, vehicle_year are similar
 # that is, if there's no data for one of the variables, no data is available for the others
 # vehicle_added_date also about the same, so is used as predictor variable, represent anything related to vehicle
-
+### city_name, signup_os are NOT predictors since there almost no difference between 
+### signup_channel IS a predictor

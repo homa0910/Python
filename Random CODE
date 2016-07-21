@@ -5,6 +5,9 @@ library(tidyr)
 
 setwd("//CSIADSRM01/Public/FTP Survey 2007/Smart Control/cxin/Ebay Segmentation/raw data")
 
+#################### Data Clean--------------------------
+
+################### Behavior data --------------
 
 # read in data
 behaviour_data_one = fread("ebay_behavior_184_186_second_run.txt")
@@ -29,26 +32,223 @@ setnames(behaviour_data,  c("month_id",
 # remove 186 month
 behaviour_data = behaviour_data[month_id != 186]
 
+# select the machineIDs has only one person_ID
+unique_users = behaviour_data[, .(UU = length(unique(person_id))), by = .(machine_id)]
+behaviour_data_one_user = behaviour_data[ machine_id %in% unique_users$machine_id[unique_users$UU == 1] ]
 
-# Paul's list with machine_id and person_id
-mid_pid = read.csv("\\\\csia2gpl06\\incoming\\cxin\\DATA\\eBay\\mid_pid.csv")
+# change longform to wideform by r_pages, r_sessions, r_minutes
 
-# Select matched machine_id and person_id
-behaviour_data_merged = merge(behaviour_data, mid_pid, by = c("machine_id", "person_id"))
-mid_pid_merge = unique(behaviour_data_merged[,c("machine_id", "person_id"), with = F])
+# use_name should be equal to one of the r_pages, r_sessions, r_minutes.
 
-behaviour_data_merged = behaviour_data_merged %>% select(machine_id, person_id, category_name, r_pages)
-behaviour_data_merged = behaviour_data_merged[, .(Sum = sum(r_pages)), by = .(machine_id, category_name)]
-behaviour_data_merged = spread(behaviour_data_merged, category_name, Sum)
-behaviour_data_merged[is.na(behaviour_data_merged)] = 0
-behaviour_data_merged = merge(behaviour_data_merged, mid_pid_merge, by = "machine_id")
+behaviour_data_one_user = behaviour_data_one_user %>% select(machine_id, person_id, category_name, use_name)
+behaviour_data_one_user = behaviour_data_one_user[, .(Sum = sum(use_name)), by = .(machine_id, category_name)]
+behaviour_data_one_user = spread(behaviour_data_one_user, category_name, Sum)
+behaviour_data_one_user[is.na(behaviour_data_one_user)] = 0
+
+write.csv(behaviour_data_one_user, file = "behaviour data 180_185 (unique user).csv")
 
 
+################### Search data --------------
+
+# read in data
+search_data = fread('ebay_search_cat_180_185m.txt')
+setnames(search_data, c('month_id',
+                        'machine_id',
+                        'person_id',
+                        'resp_id',
+                        'category_name',
+                        'sub_category_name',
+                        'r_searches'))
+
+# select the machineIDs has only one person_ID
+unique_users = search_data[, .(UU = length(unique(person_id))), by = .(machine_id)]
+
+search_data_one_user = search_data[ machine_id %in% unique_users$machine_id[unique_users$UU == 1] ]
+search_data_one_user = search_data_one_user %>% select(machine_id, person_id, category_name, r_searches)
+search_data_one_user = search_data_one_user[, .(Sum = sum(r_searches)), by = .(machine_id, category_name)]
+search_data_one_user = spread(search_data_one_user, category_name, Sum)
+search_data_one_user[is.na(search_data_one_user)] = 0
+
+write.csv(search_data_one_user, file = "search data 180_185 (unique user).csv")
+
+########################### Analysis -------------------------------------
 
 
+library(caret)
+library(doParallel)
+registerDoParallel(cores=3)
+
+set.seed(1)
 
 setwd("//CSIADSRM01/Public/FTP Survey 2007/Smart Control/cxin/Ebay Segmentation/use data")
-write.csv(behaviour_data_merged, file = "behaviour data matched by Paul 180_185.csv", row.names = F)
+
+###### Read in Data 
+
+# survey  data ---------------
+survey_data = read.csv("survey data.csv")
+
+# select response variable's name
+named = "hq_segment"
+
+# hq_segment_seth
+# hq_segment_pfp
+# hq_segment_prag
+# hq_segment
+# hq_subsegment
+
+
+survey_data = survey_data[, c("machine_id", named)]
+
+
+# behaviour data 
+behaviour_data = read.csv("behaviour data 180_185 (unique user).csv")
+
+# Search data
+#search_data = read.csv('search data 180_185 (unique user).csv')
+search_data = search_data_one_user
+
+################ Data Integrated -----------------
+
+temp_data  = merge(search_data, survey_data, by = "machine_id")
+
+# test and training 
+inTrainingSet = createDataPartition(temp_data[,named], p = .75, list = FALSE)
+removed_names = c("machine_id", named)
+
+training_input = as.data.frame(temp_data)[inTrainingSet, !colnames(temp_data) %in% removed_names]
+test_input = as.data.frame(temp_data)[-inTrainingSet, !colnames(temp_data) %in% removed_names]
+
+training_output = as.factor(as.data.frame(temp_data)[inTrainingSet, named])
+test_output = as.factor(as.data.frame(temp_data)[-inTrainingSet, named])
+
+
+
+################ Analysis ---------------------
+
+################ Random Forest ------------------
+
+ctrl = trainControl(method = "repeatedcv", repeats = 5)
+
+grid = expand.grid( mtry = seq(1:10))
+
+rfTune = train( x = training_input,
+                y = training_output,
+                importance = TRUE,
+                # tuneGrid = grid,
+                metric = "Kappa",
+                method = "rf", 
+                rControl =ctrl) 
+
+ggplot(rfTune) + theme(legend.position = "top")
+
+rfPred = predict(rfTune, test_input)
+
+confusionMatrix(rfPred, test_output)
+
+
+############### multinomial logistic (regulization)------------
+
+ctrl = trainControl(method = "repeatedcv", repeats = 5)
+
+grid = expand.grid( .alpha = c(0, .1, .2, .4, .6, .8, 1), 
+                    .lambda = seq(.01, .2, length=40))
+
+mclogTune = train( x = training_input,
+                   y = training_output,
+                   tuneGrid = grid,
+                   metric = "Kappa",
+                   method = "glmnet", 
+                   family = "multinomial",
+                   trControl = ctrl) 
+
+mclogPred = predict(mclogTune, test_input)
+
+confusionMatrix(mclogPred, test_output)
+
+
+################### Boosted Trees ---------------------------
+
+ctrl = trainControl(method = "repeatedcv", repeats = 5)
+
+grid = expand.grid( interaction.depth = seq(1, 7, by = 2),
+                    n.trees = seq(100, 1000, by = 50),
+                    shrinkage = c(0.01, 0.1),
+                    n.minobsinnode= 10)
+
+btTune = train(  x = training_input,
+                 y = training_output,
+                 method = "gbm",
+                 metric = "Kappa",
+                 tuneGrid = grid,
+                 trControl = ctrl)
+
+ggplot(btTune) + theme(legend.position = "top")
+
+btPred = predict(btTune, test_input)
+
+confusionMatrix(btPred, test_output)
+
+
+############### Navie Bayes ----------------------
+
+
+ctrl = trainControl(method = "repeatedcv", repeats = 5)
+
+nbTune =  train( x = training_input,
+                 y = training_output,
+                 method = "nb",
+                 metric = "Kappa",
+                 trControl = ctrl)
+
+nbPred = predict(nbTune, test_input)
+
+confusionMatrix(nbPred, test_output)
+
+
+
+############ Support Vector Machines --------------------
+
+ctrl = trainControl(method = "repeatedcv", repeats = 5,
+                    classProbs = TRUE,
+                    summaryFunction = twoClassSummary)
+
+grid = expand.grid( sigma = c(0.5,1,1.5), 
+                    C = seq(0.1,1.51,0.25))
+
+svmTune = train( x = training_input,
+                 y = as.factor(ifelse(training_output ==1, "SETH", "NOT")),
+                 method = "svmRadial",
+                 metric = "Kappa",
+                 tuneGrid = grid,
+                 trControl = ctrl)
+
+ggplot(svmTune) + theme(legend.position = "top")
+
+svmPred = predict(svmTune, test_input)
+
+confusionMatrix(svmPred, as.factor(ifelse(test_output ==1, "SETH", "NOT")))
+
+
+############# KNN  --------------
+
+ctrl = trainControl(method = "repeatedcv", repeats = 5)
+
+grid = expand.grid( k = seq(1,20,2))
+
+knnTune =  train( x = training_input,
+                  y = training_output,
+                  method = "knn",
+                  metric = "Kappa",
+                  tuneGrid = grid,
+                  trControl = ctrl)
+
+ggplot(knnTune) + theme(legend.position = "top")
+
+knnPred = predict(knnTune, test_input)
+
+confusionMatrix(knnPred, test_output)
+
+
 
 
 

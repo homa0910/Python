@@ -1,0 +1,54 @@
+library(data.table)
+library(dplyr)
+library(tidyr)
+
+
+setwd("//CSIADSRM01/Public/FTP Survey 2007/Smart Control/cxin/Ebay Segmentation/raw data")
+
+
+# read in data
+behaviour_data_one = fread("ebay_behavior_184_186_second_run.txt")
+behaviour_data_two = fread("ebay_behavior_180_183_second_run.txt")
+behaviour_data = rbind(behaviour_data_one, behaviour_data_two)
+
+setnames(behaviour_data,  c("month_id",
+                            "resp_id",
+                            "machine_id",
+                            "person_id",
+                            "primary_user_flag",
+                            "time_id",
+                            "web_id",
+                            "web_name",
+                            "category_name",
+                            "sub_category_name",
+                            "r_sessions",
+                            "r_pages",
+                            "r_minutes"))
+
+
+# remove 186 month
+behaviour_data = behaviour_data[month_id != 186]
+
+
+# Paul's list with machine_id and person_id
+mid_pid = read.csv("\\\\csia2gpl06\\incoming\\cxin\\DATA\\eBay\\mid_pid.csv")
+
+# Select matched machine_id and person_id
+behaviour_data_merged = merge(behaviour_data, mid_pid, by = c("machine_id", "person_id"))
+mid_pid_merge = unique(behaviour_data_merged[,c("machine_id", "person_id"), with = F])
+
+behaviour_data_merged = behaviour_data_merged %>% select(machine_id, person_id, category_name, r_pages)
+behaviour_data_merged = behaviour_data_merged[, .(Sum = sum(r_pages)), by = .(machine_id, category_name)]
+behaviour_data_merged = spread(behaviour_data_merged, category_name, Sum)
+behaviour_data_merged[is.na(behaviour_data_merged)] = 0
+behaviour_data_merged = merge(behaviour_data_merged, mid_pid_merge, by = "machine_id")
+
+
+
+
+
+setwd("//CSIADSRM01/Public/FTP Survey 2007/Smart Control/cxin/Ebay Segmentation/use data")
+write.csv(behaviour_data_merged, file = "behaviour data matched by Paul 180_185.csv", row.names = F)
+
+
+

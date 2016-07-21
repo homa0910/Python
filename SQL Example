@@ -24,3 +24,34 @@ INSERT INTO test (id, city_name, predicted_eta, actual_eta, status, request_at) 
 SELECT *, actual_eta - predicted_eta AS difference_eta FROM test 
 WHERE city_name = 'Qarth' AND status = 'completed' 
 ORDER BY difference_eta DESC;
+
+
+CREATE TABLE testdata
+(
+  intcolumn bigint,
+  fltcolumn real
+);
+
+insert into testdata(intcolumn, fltcolumn)  values  (5, 5.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (195, 195.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (1095, 1095.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (5995, 5995.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (15, 15.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (25, 25.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (495, 495.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (35, 35.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (695, 695.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (595, 595.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (35, 35.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (30195, 30195.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (165, 165.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (65, 65.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (955, 955.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (135, 135.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (19195, 19195.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (145, 145.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (85, 85.1345);
+insert into testdata(intcolumn, fltcolumn)  values  (455, 455.1345);
+
+select fltcolumn, ntile(10) over (order by fltcolumn) AS percentile from testdata order by fltcolumn;
+

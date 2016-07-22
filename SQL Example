@@ -1,28 +1,62 @@
-CREATE TABLE test (id INTEGER PRIMARY KEY,
+CREATE TABLE trips (id INTEGER PRIMARY KEY,
+                    client_id INTEGER,
                     city_name TEXT,
                     predicted_eta INTEGER,
                     actual_eta INTEGER,
-                    status ENUM('completed','cancelled_by_driver','cancelled_by_rider'),
+                    status TEXT,
                     request_at TIMESTAMP);
                     
-INSERT INTO test (id, city_name, predicted_eta, actual_eta, status, request_at) VALUES 
-  (1, 'Qarth', 16, 15, 'completed', '2016-06-11 13:23:44'),
-  (2, 'Qarth', 18, 19, 'completed', '2016-07-11 10:13:14'),
-  (3, 'Qarth', 18, 20, 'completed', '2016-06-19 12:13:14'),
-  (4, 'Qarth', 28, 25, 'completed', '2016-07-05 20:13:14'),
-  (5, 'Qarth', 26, 23, 'cancelled_by_rider', '2016-06-18 19:21:24'),
-  (6, 'Qarth', 26, 33, 'cancelled_by_driver', '2016-06-28 19:21:24'),
-  (7, 'Meereen', 11, 23, 'completed', '2016-06-28 13:11:14'),
-  (8, 'Meereen', 26, 23, 'completed', '2016-06-18 9:24:29'),
-  (9, 'Meereen', 21, 23, 'completed', '2016-06-08 23:11:14'),
-  (10, 'Meereen', 26, 29, 'completed', '2016-06-21 19:24:29'),
-  (11, 'Meereen', 39, 43, 'cancelled_by_rider', '2016-06-11 10:01:34'),
-  (12, 'Seattle', 29, 43, 'completed', '2016-07-11 20:26:04');
+INSERT INTO trips (id, client_id, city_name, predicted_eta, actual_eta, status, request_at) VALUES 
+  (1,1, 'Qarth', 16, 15, 'completed', '2016-06-11 13:23:44'),
+  (2,2, 'Qarth', 18, 19, 'completed', '2016-07-11 10:13:14'),
+  (3,3, 'Qarth', 18, 20, 'completed', '2016-06-19 12:13:14'),
+  (4,4, 'Qarth', 28, 25, 'completed', '2016-07-05 20:13:14'),
+  (5,5, 'Qarth', 26, 23, 'cancelled_by_rider', '2016-06-18 19:21:24'),
+  (6,6, 'Qarth', 26, 33, 'cancelled_by_driver', '2016-06-28 19:21:24'),
+  (7,7, 'Meereen', 11, 23, 'completed', '2016-06-28 13:11:14'),
+  (8,8, 'Meereen', 26, 23, 'completed', '2016-06-18 9:24:29'),
+  (9,9, 'Meereen', 21, 23, 'completed', '2016-06-08 23:11:14'),
+  (10,10, 'Meereen', 26, 29, 'completed', '2016-06-21 19:24:29'),
+  (11,11, 'Meereen', 39, 43, 'cancelled_by_rider', '2016-06-11 10:01:34'),
+  (12,12, 'Seattle', 29, 43, 'completed', '2016-07-11 20:26:04');
+
+
+CREATE TABLE cities (city_id INTEGER,
+                     city_name TEXT);
+                     
+INSERT INTO cities(city_id, city_name) VALUES
+   (1, 'Qarth'),
+   (2, 'Meereen');
+
+CREATE TABLE events (rider_id INTEGER,
+                     city_id INTEGER,
+                     event_name TEXT,
+                     _ts TIMESTAMP);
+                     
+INSERT INTO events(rider_id, city_id, event_name, _ts) VALUES
+  (3, 1, 'sign_up_success','2016-06-11 13:23:44'),
+  (4, 1, 'sign_up_success','2016-07-01 13:23:44'),
+  (13, 1, 'sign_up_success','2016-06-11 13:23:44'),
+  (23, 1, 'sign_up_success','2016-06-11 13:23:44'),
+  (23, 1, 'sign_up_success','2016-06-11 13:23:44'),
+  (53, 1, 'sign_up_success','2016-06-11 13:23:44'),
+  (123, 1, 'sign_up_success','2016-06-11 13:23:44'),
+  (8, 2, 'sign_up_success','2016-06-11 13:23:44'),
+  (9, 2, 'sign_up_success','2016-06-07 13:23:44'),
+  (10, 2, 'sign_up_success','2016-06-19 13:23:44'),
+  (23, 2, 'sign_up_success','2016-06-11 13:23:44'),
+  (23, 2, 'sign_up_success','2016-06-11 13:23:44'),
+  (53, 2, 'sign_up_success','2016-06-11 13:23:44'),
+  (123, 2, 'sign_up_success','2016-06-11 13:23:44');
+  
+                     
+
+                     
   
   
 SELECT *, actual_eta - predicted_eta AS difference_eta, 
        ntile(100) over (order by actual_eta - predicted_eta) as percentile
-FROM test 
+FROM trips 
 WHERE city_name = 'Qarth' AND status = 'completed' 
       AND extract(epoch from NOW()) - extract(epoch from request_at) < extract(epoch from interval '30 days')
 ORDER BY percentile ASC;
@@ -32,7 +66,7 @@ SELECT difference_eta
 FROM (
   SELECT *, actual_eta - predicted_eta AS difference_eta, 
          percent_rank() over (order by actual_eta - predicted_eta) as percentile
-  FROM test 
+  FROM trips 
   WHERE city_name = 'Qarth' AND status = 'completed' 
         AND extract(epoch FROM NOW()) - extract(epoch FROM request_at) < extract(epoch FROM INTERVAL '30 days')
   ORDER BY percentile ASC)

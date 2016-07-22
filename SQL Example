@@ -20,23 +20,27 @@ INSERT INTO test (id, city_name, predicted_eta, actual_eta, status, request_at) 
   (12, 'Seattle', 29, 43, 'completed', '2016-07-11 20:26:04');
   
   
-  
-SELECT *, actual_eta - predicted_eta AS difference_eta FROM test 
-WHERE city_name = 'Qarth' AND status = 'completed' 
-ORDER BY difference_eta DESC;
-
 SELECT *, actual_eta - predicted_eta AS difference_eta, 
        ntile(100) over (order by actual_eta - predicted_eta) as percentile
 FROM test 
 WHERE city_name = 'Qarth' AND status = 'completed' 
+      AND extract(epoch from NOW()) - extract(epoch from request_at) < extract(epoch from interval '30 days')
 ORDER BY percentile ASC;
 
+  
+SELECT difference_eta 
+FROM (
+  SELECT *, actual_eta - predicted_eta AS difference_eta, 
+         percent_rank() over (order by actual_eta - predicted_eta) as percentile
+  FROM test 
+  WHERE city_name = 'Qarth' AND status = 'completed' 
+        AND extract(epoch FROM NOW()) - extract(epoch FROM request_at) < extract(epoch FROM INTERVAL '30 days')
+  ORDER BY percentile ASC)
+AS FOO
+WHERE percentile > 0.8999999999 
+ORDER BY percentile ASC
+LIMIT 1;
 
-SELECT NOW();
-#SELECT age(clock_timestamp(), request_at) AS time_diff FROM test;
-#SELECT clock_timestamp()-request_at AS time_diff FROM test;
-
-SELECT extract(day from clock_timestamp())
 
 CREATE TABLE testdata
 (

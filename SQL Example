@@ -50,18 +50,7 @@ INSERT INTO events(rider_id, city_id, event_name, _ts) VALUES
   (123, 2, 'sign_up_success','2016-06-11 13:23:44');
   
                      
-
-                     
-  
-  
-SELECT *, actual_eta - predicted_eta AS difference_eta, 
-       ntile(100) over (order by actual_eta - predicted_eta) as percentile
-FROM trips 
-WHERE city_name = 'Qarth' AND status = 'completed' 
-      AND extract(epoch from NOW()) - extract(epoch from request_at) < extract(epoch from interval '30 days')
-ORDER BY percentile ASC;
-
-  
+### Find 90th percentile
 SELECT difference_eta 
 FROM (
   SELECT *, actual_eta - predicted_eta AS difference_eta, 
@@ -74,6 +63,38 @@ AS FOO
 WHERE percentile > 0.8999999999 
 ORDER BY percentile ASC
 LIMIT 1;
+
+### Find proportions of signups completed first trip over all signup within the first week of 2016
+SELECT COUNT(all_signup) AS count_signup
+  FROM ( 
+    SELECT cities.city_name, events.rider_id, events.event_name, events._ts 
+     FROM cities
+     JOIN events
+     ON events.city_id = cities.city_id
+   ) AS all_signup
+  WHERE city_name = 'Qarth' AND event_name = 'sign_up_success'
+    AND EXTRACT(EPOCH FROM TIMESTAMP '2016-01-01 00:00:00') < EXTRACT(EPOCH FROM _ts)
+    AND EXTRACT(EPOCH FROM _ts) < EXTRACT(EPOCH FROM TIMESTAMP '2016-01-02 00:00:00');
+
+SELECT COUNT(signup_with_completed_trip) AS count_signup_with_completed_trip
+  FROM (
+    SELECT trips.request_at, trips.status ,cities.city_name, events.rider_id, events.event_name, events._ts
+      FROM trips
+      JOIN cities
+      ON trips.city_name = cities.city_name
+      JOIN events
+      ON trips.client_id = events.rider_id
+   ) AS signup_with_completed_trip
+   WHERE city_name = 'Qarth' AND event_name = 'sign_up_success' AND status = 'completed'
+     AND EXTRACT(EPOCH FROM TIMESTAMP '2016-01-01 00:00:00') < EXTRACT(EPOCH FROM _ts)
+     AND EXTRACT(EPOCH FROM _ts) < EXTRACT(EPOCH FROM TIMESTAMP '2016-01-08 00:00:00')
+     AND EXTRACT(EPOCH FROM request_at) < EXTRACT(EPOCH FROM _ts) + EXTRACT(EPOCH FROM INTERVAL '168 hours');
+
+
+
+
+
+
 
 
 CREATE TABLE testdata

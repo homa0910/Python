@@ -148,6 +148,13 @@ plot(muhat, presids^2, xlim=c(0,0.6), ylim=c(0,5),
 sfit = loess(presids^2 ~ muhat)
 lines(sfit$x[order(sfit$x)], fitted(sfit)[order(sfit$x)],, col='red', lwd=2)
 
+### ROC curve
+require(ROCR)
+mylogit = glm(y ~ technology + travel, family=binomial, data=srv.data)
+srv.data$score<-predict(mylogit, type="response" )
+pred<-prediction(srv.data$score,srv.data$y)
+perf<-performance(pred,"tpr", "fpr")
+plot(perf)
 
 ###############################################################################################
 ####################      NOTES         #######################################################

@@ -1,11 +1,21 @@
 require(XLConnect)
 require(MASS)
+require(lmtest)
+require(caret)
+library(MKmisc)
 
+
+setwd('C:/Users/Thao/OneDrive/Job Search 2016/UberInterview')
 data = read.csv('C:/Users/Thao/OneDrive/Job Search 2016/UberInterview/ds_challenge_v2_1_data.csv',na.strings=c('','NA'))
 
 data$signup_date = as.Date(data$signup_date, format='%m/%d/%Y')
 data$first_completed_date = as.Date(data$first_completed_date, format='%m/%d/%Y')
+data$bgc_date = as.Date(data$bgc_date, format='%m/%d/%Y')
+data$vehicle_added_date = as.Date(data$vehicle_added_date, format='%m/%d/%Y')
+
 data$signup_to_completed = as.numeric(data$first_completed_date - data$signup_date)
+data$signup_to_bgc = as.numeric(data$bgc_date - data$signup_date)
+data$signup_to_veh = as.numeric(data$vehicle_added_date - data$signup_date)
 
 
 ### Add binary indicator for whether or not a driver signed up completed first trip
@@ -26,44 +36,87 @@ crosstab1 = cbind(table(data$first_completed,data$bgc),
                   table(data$first_completed,data$signup_channel),
                   table(data$first_completed,data$signup_os))
 
-write.csv(crosstab1,'Original Data Crosstabs.csv')
+# #write.csv(crosstab1,'Original Data Crosstabs.csv')
 
 
-### Rows with bad vehicle_make = bike, bicycle, walker, autobot
+### clean data with bad vehicle_make = bike, bicycle, walker, autobot
 location.bad.vehicle = which(data$vehicle_make %in% c('Bicycle','Bike','Walker','Autobot'))
 clean.data = data[-location.bad.vehicle,]
 
-### Rows with all NA in bgc_date
+### Clean data with all NA in bgc_date
 location.bga.na = which(is.na(clean.data$bgc_date))
 clean.data = clean.data[-location.bga.na,]
+
+### Clean data with all NA in vehicle_added_date
+location.vehicle.na = which(is.na(clean.data$vehicle_added_date))
+clean.data = clean.data[-location.vehicle.na,]
+
+### Clean data with vehicle_year=0
+location.vehicle.year0 = which(clean.data$vehicle_year==0)
+clean.data = clean.data[-location.vehicle.year0,]
+
+### Add vehicle classification
+clean.data$vehicle_class = NA
+clean.data$vehicle_class[which(clean.data$vehicle_make %in% 
+                           c('Acura','Audi','Bentley','BMW','Cadillac','Hummer','Infinity',
+                             'Jaguar','Jeep','Lexus','Lincoln','Maserati','Mercedes-Benz','Porsche'))] = 'luxury'
+clean.data$vehicle_class[which(clean.data$vehicle_make %in% 
+                           c('Buick','Chevrolet','Chrysler','Dodge','Fiat','Ford','GMC','Honda','Huyndai','Isuzu',
+                             'Kia','Land Rover','Mazda','Mercury','Mini','Mitsubishi','Nissan','Oldsmobile',
+                             'Pontiac','Saab','Saturn','Scion','Subaru','Suzuki','Tesla','Toyota','Volkswagen','Volvo'))] = 'commercial'
+
+
+### Combine vehicles into group according to their popularity
+count = table(clean.data$vehicle_make)
+
+clean.data$vehicle_pop = NA
+clean.data$vehicle_pop[which(clean.data$vehicle_make %in% names(count)[which(count<100)])] = 'Popular_1'
+clean.data$vehicle_pop[which(clean.data$vehicle_make %in% names(count)[which(count>99)])] = 'Popular_2'
+
+
+### Combine any vehicle with less than 30 incidences into "Other"
+# clean.data$vehicle_make_new = clean.data$vehicle_make
+# 
+# c('Bentley','Fiat','Hummer','Isuzu','Jaguar','Land Rover',
+#   'Maserati','Mercuy','Mini','Oldsmobile','Pontiac','Porsche',
+#   'Saab','Suzuki','Tesla')
+# 
+# clean.data$vehicle_make_new[which(clean.data$vehicle_make == 'Bentley')] = as.string('other')
+# 
+# clean.data$vehicle_make_new[which(is.na(clean.data$vehicle_make_new))] = clean.data$vehicle_make[which(is.na(clean.data$vehicle_make_new))]
+
+
+#write.csv(clean.data,'final_data.csv')
+
 
 ### More crosstabs
 table(clean.data$first_completed,clean.data$vehicle_added)
 table(clean.data$first_completed,clean.data$vehicle_make_bin)
 
 veh.make.table = table(clean.data$first_completed,clean.data$vehicle_make)
-veh.make.table[1,]/table(clean.data$vehicle_make)
-veh.make.table[2,]/table(clean.data$vehicle_make)
-
+veh.year.table = table(clean.data$first_completed,clean.data$vehicle_year)
+veh.class.table = table(clean.data$first_completed,clean.data$vehicle_class)
+veh.pop.table = table(clean.data$first_completed,clean.data$vehicle_pop)
 city.table = table(clean.data$first_completed,clean.data$city_name)
 channel.table = table(clean.data$first_completed,clean.data$signup_channel)
 os.table = table(clean.data$first_completed,clean.data$signup_os)
 
-crosstab2 = cbind(rbind(city.table[1,]/table(clean.data$city_name),
+crosstab2 = cbind(rbind(veh.make.table[1,]/table(clean.data$vehicle_make),
+                        veh.make.table[2,]/table(clean.data$vehicle_make)),
+                  rbind(veh.year.table[1,]/table(clean.data$vehicle_year),
+                        veh.year.table[2,]/table(clean.data$vehicle_year)),
+                  rbind(veh.class.table[1,]/table(clean.data$vehicle_class),
+                        veh.class.table[2,]/table(clean.data$vehicle_class)),
+                  rbind(veh.pop.table[1,]/table(clean.data$vehicle_pop),
+                        veh.pop.table[2,]/table(clean.data$vehicle_pop)),
+                  rbind(city.table[1,]/table(clean.data$city_name),
                         city.table[2,]/table(clean.data$city_name)),
                   rbind(channel.table[1,]/table(clean.data$signup_channel),
                         channel.table[2,]/table(clean.data$signup_channel)),
                   rbind(os.table[1,]/table(clean.data$signup_os),
                         os.table[2,]/table(clean.data$signup_os)))
 
-write.csv(crosstab2,'crosstab2.csv')
-
-### Rows with all NA in (vehicle_added_date, vehicle_make, vehicle_model, vehicle_year, first_completed_date)
-location.na = which(is.na(clean.data$vehicle_added_date) &
-                      is.na(clean.data$vehicle_make) &
-                      is.na(clean.data$vehicle_model) &
-                      is.na(clean.data$vehicle_year) &
-                      is.na(clean.data$first_completed_date))
+#write.csv(crosstab2,'crosstab2.csv')
 
 
 ### Proportion who took first trips
@@ -96,21 +149,25 @@ expfit = function(model){
 ###############################################################################################
 ####################      Building model         #################################################
 ###############################################################################################
+### Split data to training vs testing
+Train <- createDataPartition(clean.data$first_completed, p=0.75, list=FALSE)
+training <- clean.data[Train, ]
+testing <- clean.data[-Train, ]
+
+training$vehicle_year = training$vehicle_year - 1995
 ### Logistic Regression
-fit1 = glm(first_completed ~ vehicle_added + factor(signup_channel) + factor(signup_os) + factor(city_name),
-           data = clean.data, family = binomial(link='logit'))
+fit1 = glm(first_completed ~ signup_to_veh + signup_to_bgc + vehicle_year + factor(signup_channel) + factor(signup_os) + factor(vehicle_make) + factor(city_name),
+           data = training, family = binomial(link='logit'))
 
-fit2 = glm(first_completed ~ vehicle_added + factor(signup_channel) + factor(signup_os),
-           data = clean.data, family = binomial(link='logit'))
+fit2 = glm(first_completed ~ signup_to_bgc + vehicle_year + factor(signup_channel) + factor(signup_os) + factor(city_name),
+           data = training, family = binomial(link='logit'))
 
-fit3 = glm(first_completed ~ vehicle_added + factor(signup_channel),
-           data = clean.data, family = binomial(link='logit'))
+fit3 = glm(first_completed ~  (signup_to_bgc) + (vehicle_year) + factor(signup_channel) + factor(signup_os) ,
+           data = training, family = binomial(link='logit'))
 
-fit4 = glm(first_completed ~ vehicle_added * factor(signup_channel),
-           data = clean.data, family = binomial(link='logit'))
+fit4 = glm(first_completed ~ signup_to_veh+ signup_to_bgc+vehicle_year + factor(signup_channel) + factor(signup_os) ,
+           data = training, family = binomial(link='logit'))
 
-fit5 = glm(first_completed ~ vehicle_added : factor(signup_channel),
-           data = clean.data, family = binomial(link='logit'))
 
 pred.1 = predict(fit1, type='response')
 pred.2 = predict(fit2, type='response')
@@ -127,34 +184,130 @@ pred.fit4 = ifelse(pred.4 > 0.5, 1, 0)
 ####################      Diagnostics         #################################################
 ###############################################################################################
 ### Predicted vs Actual values
-actual.comp.loc = which(clean.data$first_completed==1)
-pred.comp.loc.1 = which(pred.fit1==1)
-pred.comp.loc.2 = which(pred.fit2==1)
-pred.comp.loc.3 = which(pred.fit3==1)
-pred.comp.loc.4 = which(pred.fit4==1)
+# actual.comp.loc = which(clean.data$first_completed==1)
+# pred.comp.loc.1 = which(pred.fit1==1)
+# pred.comp.loc.2 = which(pred.fit2==1)
+# pred.comp.loc.3 = which(pred.fit3==1)
+# pred.comp.loc.4 = which(pred.fit4==1)
+# 
+# 
+# ###
+# table(pred.fit1)
+# table(pred.fit2)
+# table(pred.fit3)
+# table(pred.fit4)
+# 
+# ###
+# table(pred.comp.loc.1 %in% actual.comp.loc)
+# table(pred.comp.loc.2 %in% actual.comp.loc)
+# table(pred.comp.loc.3 %in% actual.comp.loc)
+# table(pred.comp.loc.4 %in% actual.comp.loc)
+# 
+###############################################################################################
+####################      Sensitivity         #################################################
+###############################################################################################
+training$pred.3 = pred.fit3
+training$pred.4 = pred.fit4
 
-###
-table(pred.3)
-table(clean.data$first_completed,clean.data$vehicle_added,clean.data$signup_channel)
+diag.fn = function(temp){
+  TP = length(which(rowSums(temp)==2))
+  TN = length(which(rowSums(temp)==0))
+  FP = length(which(temp[,1]==0 & temp[,2]==1))
+  FN = length(which(temp[,1]==1 & temp[,2]==0))
+  sens = TP/(TP+FN)
+  spec = TN/(TN+FP)
+  prec = TP/(TP+FP)
+  acc = (TP+TN)/(TP+FP+FN+TN)
+  return (list(sens = sens, spec = spec, prec = prec, acc = acc))
+}
 
-table(pred.2)
-table(clean.data$vehicle_added,clean.data$signup_channel,clean.data$signup_os)
 
-###
+diag.fn(training[,c('first_completed','pred.3')])
+
+diag.fn(training[,c('first_completed','pred.4')])
+
+
+###############################################################################################
+####################      Diagnostics Plots         ###########################################
+###############################################################################################
 presids = residuals(fit3, type='pearson')
 muhat = fitted(fit3)
+windows()
 plot(muhat, presids^2, xlim=c(0,0.6), ylim=c(0,5),
-     xlab='Fitted probability', ylab='Person Residual Squared')
+     xlab='Fitted probability', ylab='Pearson Residual Squared')
 sfit = loess(presids^2 ~ muhat)
 lines(sfit$x[order(sfit$x)], fitted(sfit)[order(sfit$x)],, col='red', lwd=2)
 
-### ROC curve
-require(ROCR)
-mylogit = glm(y ~ technology + travel, family=binomial, data=srv.data)
-srv.data$score<-predict(mylogit, type="response" )
-pred<-prediction(srv.data$score,srv.data$y)
-perf<-performance(pred,"tpr", "fpr")
-plot(perf)
+####
+presids = residuals(fit4, type='pearson')
+muhat = fitted(fit4)
+windows()
+plot(muhat, presids^2, xlim=c(0,0.6), ylim=c(0,5),
+     xlab='Fitted probability', ylab='Pearson Residual Squared')
+sfit = loess(presids^2 ~ muhat)
+lines(sfit$x[order(sfit$x)], fitted(sfit)[order(sfit$x)],, col='red', lwd=2)
+
+###############################################################################################
+####################      Diagnostics          ###########################################
+###############################################################################################
+lrtest(fit3,fit2)
+lrtest(fit4,fit3)
+HLgof.test(fit = fitted(fit3), obs = training$first_completed)
+HLgof.test(fit = fitted(fit4), obs = training$first_completed)
+
+# pred = predict(fit3, newdata=testing)
+# accuracy <- table(pred, testing[,"first_completed"])
+# sum(diag(accuracy))/sum(accuracy)
+# ## [1] 0.705
+# pred = predict(fit3, newdata=testing)
+# confusionMatrix(data=pred, testing$first_completed)
+
+testing$vehicle_year = testing$vehicle_year - 1995
+
+pred = predict(fit3, newdata=testing, type='response')
+testing$pred = ifelse(pred > 0.5,1,0)
+diag.fn(testing[,c('first_completed','pred')])
+
+
+pred = predict(fit4, newdata=testing, type='response')
+testing$pred = ifelse(pred > 0.5,1,0)
+diag.fn(testing[,c('first_completed','pred')])
+
+##################
+library(ROCR)
+library(ggplot2)
+prob = predict(fit3, newdata=testing, type='response')
+pred = prediction(prob, testing$first_completed)
+perf = performance(pred, measure='tpr',x.measure='fpr')
+auc = performance(pred,measure='auc')
+auc = auc@y.values[[1]]
+
+roc.data = data.frame(fpr=unlist(perf@x.values),
+                      tpr=unlist(perf@y.values),
+                      model='GLM')
+
+windows()
+ggplot(roc.data, aes(x=fpr, ymin=0, ymax=tpr)) +
+  geom_ribbon(alpha=0.2) +
+  geom_line(aes(y=tpr)) +
+  ggtitle(paste0("ROC Curve w/ AUC=", auc))
+
+#####
+prob = predict(fit4, newdata=testing, type='response')
+pred = prediction(prob, testing$first_completed)
+perf = performance(pred, measure='tpr',x.measure='fpr')
+auc = performance(pred,measure='auc')
+auc = auc@y.values[[1]]
+
+roc.data = data.frame(fpr=unlist(perf@x.values),
+                      tpr=unlist(perf@y.values),
+                      model='GLM')
+
+windows()
+ggplot(roc.data, aes(x=fpr, ymin=0, ymax=tpr)) +
+  geom_ribbon(alpha=0.2) +
+  geom_line(aes(y=tpr)) +
+  ggtitle(paste0("ROC Curve w/ AUC=", auc))
 
 ###############################################################################################
 ####################      NOTES         #######################################################
@@ -164,6 +317,6 @@ plot(perf)
 # background check isn't a predictor variable due to lack of variability
 ### vehicle_make, vehicle_model, vehicle_year are similar
 # that is, if there's no data for one of the variables, no data is available for the others
-# vehicle_added_date also about the same, so is used as predictor variable, represent anything related to vehicle
+# vehicle_year_date also about the same, so is used as predictor variable, represent anything related to vehicle
 ### city_name, signup_os are NOT predictors since there almost no difference between 
 ### signup_channel IS a predictor

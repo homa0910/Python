@@ -1,0 +1,56 @@
+# Build Schema
+CREATE TABLE persons (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    fullname TEXT,
+    age INTEGER);
+    
+INSERT INTO persons (fullname, age) VALUES 
+("Bobby McBobbyFace", "12"),
+("Lucy BoBucie", "25"),
+("Banana FoFanna", "14"),
+("Shish Kabob", "20"),
+("Fluffy Sparkles", "8");
+
+CREATE table hobbies (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    person_id INTEGER,
+    name TEXT);
+    
+INSERT INTO hobbies (person_id, name) VALUES 
+(1, "drawing"),
+(1, "coding"),
+(2, "dancing"),
+(2, "coding"),
+(3, "skating"),
+(3, "rowing"),
+(3, "drawing"),
+(4, "coding"),
+(4, "dilly-dallying"),
+(4, "meowing");
+
+CREATE table friends (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    person1_id INTEGER,
+    person2_id INTEGER);
+
+INSERT INTO friends (person1_id, person2_id)
+    VALUES (1, 4);
+INSERT INTO friends (person1_id, person2_id)
+    VALUES (2, 3);
+    
+
+# Execution
+SELECT table1.*, table2.*, table3.person2_id,
+  CASE
+    WHEN table1.age < 11 THEN "child"
+    WHEN 10 < table1.age AND table1.age < 20 THEN "teenager"
+    ELSE "adult"
+  END AS "cat"
+  
+  FROM persons AS table1
+    lEFT OUTER JOIN hobbies AS table2
+      ON table1.id = table2.person_id
+    LEFT OUTER JOIN friends AS table3
+      ON table1.id = table3.person1_id
+  ORDER BY table1.age ASC;
+  

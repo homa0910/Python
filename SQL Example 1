@@ -2,14 +2,15 @@
 CREATE TABLE persons (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     fullname TEXT,
-    age INTEGER);
+    age INTEGER,
+    newage INTEGER);
     
-INSERT INTO persons (fullname, age) VALUES 
-("Bobby McBobbyFace", "12"),
-("Lucy BoBucie", "25"),
-("Banana FoFanna", "14"),
-("Shish Kabob", "20"),
-("Fluffy Sparkles", "8");
+INSERT INTO persons (fullname, age, newage) VALUES 
+("Bobby McBobbyFace", "12", "15"),
+("Lucy BoBucie", "25", "30"),
+("Banana FoFanna", "14", "19"),
+("Shish Kabob", "20", "22"),
+("Fluffy Sparkles", "8", "11");
 
 CREATE table hobbies (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
@@ -39,13 +40,16 @@ INSERT INTO friends (person1_id, person2_id)
     VALUES (2, 3);
     
 
+
 # Execution
 SELECT table1.*, table2.*, table3.person2_id,
   CASE
     WHEN table1.age < 11 THEN "child"
     WHEN 10 < table1.age AND table1.age < 20 THEN "teenager"
     ELSE "adult"
-  END AS "cat"
+  END AS "cat",
+  
+  table1.newage - table1.age AS "diff_age"
   
   FROM persons AS table1
     lEFT OUTER JOIN hobbies AS table2
